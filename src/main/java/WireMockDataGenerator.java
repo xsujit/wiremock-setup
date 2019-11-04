@@ -25,7 +25,10 @@ public class WireMockDataGenerator {
 
     public static void main(String[] args) throws IOException {
 
-        WireMock.configureFor("localhost", 8090);
+        if(args[0] == null)
+            WireMock.configureFor("localhost", 8090);
+        else
+            WireMock.configureFor("localhost", Integer.parseInt(args[0]));
 
         XSSFWorkbook workbook = new XSSFWorkbook(WireMockDataGenerator.class.getResourceAsStream("/data.xlsx"));
         DataFormatter dataFormatter = new DataFormatter();
@@ -60,24 +63,22 @@ public class WireMockDataGenerator {
         }
 
         for (StubData stubData : stubDataList) {
-            stubFor(
-                    get(urlMatching(stubData.getUrl()))
+            switch (stubData.getMethod().toUpperCase()) {
+                case "GET":
+                    stubFor(get(urlMatching(stubData.getUrl()))
                             .willReturn(aResponse()
-                                    .withHeader("Content-Type", "text/plain")
+                                    .withHeader("Content-Type", "application/json")
                                     .withBody(stubData.getBody())
+                                    .withStatus(stubData.getStatusCode())
                             )
-            );
+                    );
+                case "POST":
+                    stubFor(post(urlMatching(stubData.getUrl()))
+                            .willReturn(aResponse()
+                                    .withStatus(stubData.getStatusCode())
+                            )
+                    );
+            }
         }
-
-        CloseableHttpClient httpClient = HttpClients.createDefault();
-        HttpGet request = new HttpGet("http://localhost:8090/servicedelivery/102");
-        CloseableHttpResponse response = httpClient.execute(request);
-
-        System.out.println(response.getProtocolVersion());              // HTTP/1.1
-        System.out.println(response.getStatusLine().getStatusCode());   // 200
-        System.out.println(response.getStatusLine().getReasonPhrase()); // OK
-        System.out.println(response.getStatusLine().toString());        // HTTP/1.1 200 OK
-
-        response.close();
     }
 }
